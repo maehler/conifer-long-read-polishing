@@ -1,0 +1,10 @@
+# Contig FASTA file
+contig_fasta: data/contigs.fa
+
+# Long read locations
+long_reads:
+    - data/long_reads
+
+# Short read locations
+short_reads:
+    - data/short_reads
