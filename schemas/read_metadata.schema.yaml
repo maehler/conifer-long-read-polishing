@@ -1,0 +1,30 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+description: an entry in the read metadata file
+type: object
+properties:
+    filename:
+        type: string
+        description: path to the read file
+    filetype:
+        type: string
+        description: filetype of the read file
+        enum: ["fasta", "fastq", "bam"]
+    gzipped:
+        type: boolean
+        description: whether or not the file is compressed with gzip
+    readtype:
+        type: string
+        description: type of read
+        examples:
+            - PacBio Sequel
+            - Chromium 10X
+            - Illumina NovaSeq
+    comment:
+        type: string
+        description: additional comments about the file
+
+required:
+    - filename
+    - filetype
+    - gzipped
+    - readtype

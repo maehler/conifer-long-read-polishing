@@ -5,18 +5,11 @@ properties:
     contig_fasta:
         type: string
         description: path to FASTA file with assembled contigs
-    long_reads:
-        type: array
-        items:
-            type: string
-        description: directories where long read data is located
-    short_reads:
-        type: array
-        items:
-            type: string
-        description: directories wehre short read data is located
+    read_metadata:
+        type: string
+        description: path to tsv file with sequencing read metadata
 
 required:
     - contig_fasta
-    - long_reads
+    - read_metadata
 

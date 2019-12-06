@@ -1,10 +1,21 @@
 # Contig FASTA file
 contig_fasta: data/contigs.fa
 
-# Long read locations
-long_reads:
-    - data/long_reads
+# Read metadata
+read_metadata: read_metadata.tsv
 
-# Short read locations
-short_reads:
-    - data/short_reads
+# Cluster configuration
+cluster:
+    cookiecutter_url: https://github.com/Snakemake-Profiles/slurm
+    profile_name: test_slurm
+    use-conda: true
+    restart-times: 0
+    jobs: 100
+    latency-wait: 120
+
+    # Parameters specific for the cookiecutter template
+    account: test_slurm
+    output: "logs/slurm-%j.out"
+    error: "logs/slurm-%j.err"
+    partition: core
+    submit_script: slurm-submit-advanced.py

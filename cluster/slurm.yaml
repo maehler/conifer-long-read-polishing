@@ -1,0 +1,16 @@
+__default__:
+    time: 60
+    partition: core
+    ntasks: 1
+    job_name: "{rule}.{wildcards}"
+    output: "logs/{rule}.{wildcards}.%j.out"
+    error: "logs/{rule}.{wildcards}.%j.err"
+
+pbmm2_align:
+    time: 600
+    ntasks: 10
+
+pbmm2_index:
+    partition: node
+    time: 300
+    ntasks: 20
