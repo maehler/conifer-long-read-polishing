@@ -1,5 +1,6 @@
 data/
 reference/
 logs/
+results/
 .snakemake/
 read_metadata.tsv

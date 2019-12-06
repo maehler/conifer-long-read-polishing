@@ -21,7 +21,7 @@ rule bam_fofn:
     Create a file of filenames (fofn) of all subreads
     aligned to the assembly.
     '''
-    input: expand('results/arrow/alignments/{bam_name}_alignments.bam', \
+    input: expand('results/alignments/{bam_name}_alignments.bam', \
                   bam_name=[Path(x).stem for x in read_metadata.filename[read_metadata.filetype == 'bam']])
     output: 'results/arrow/aligned_subread_bams.fofn'
     shell: 'printf "%s\\n" {input} > {output}'
