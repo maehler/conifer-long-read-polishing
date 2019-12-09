@@ -24,7 +24,7 @@ rule bam_fofn:
     input: expand('results/alignments/{bam_name}_alignments.bam', \
                   bam_name=[Path(x).stem for x in read_metadata.filename[read_metadata.filetype == 'bam']])
     output: 'results/arrow/aligned_subread_bams.fofn'
-    shell: 'printf "%s\\n" {input} > {output}'
+    shell: 'printf "%s\\n" $(realpath -es {input}) > {output}'
 
 def get_full_bam_path(wildcards):
     '''
