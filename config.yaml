@@ -4,6 +4,11 @@ contig_fasta: data/contigs.fa
 # Read metadata
 read_metadata: read_metadata.tsv
 
+# Splitting
+splitting:
+    # Size of chunks in bytes
+    chunk-size: 6500000
+
 # Cluster configuration
 cluster:
     cookiecutter_url: https://github.com/Snakemake-Profiles/slurm

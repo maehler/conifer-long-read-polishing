@@ -11,10 +11,102 @@ read_metadata = pd.read_table(config['read_metadata']) \
     .set_index('filename', drop=False)
 validate(read_metadata, 'schemas/read_metadata.schema.yaml')
 
-localrules: all, bam_fofn, symlink_assembly, cluster_config
+localrules: all, bam_fofn, symlink_assembly, cluster_config,
+            arrow_aggregate, split_fasta, index_fasta,
+            fasta_slice_fofn
 
 rule all:
     input: 'results/arrow/aligned_subread_bams.fofn'
+
+rule index_fasta:
+    input: '{filename}.fa'
+    output: '{filename}.fa.fai'
+    conda: 'envs/samtools.yaml'
+    shell: 'samtools faidx {input}'
+
+checkpoint split_fasta:
+    input:
+        fasta=config['contig_fasta']
+    output:
+        directory('data/contigs_split')
+    params:
+        chunk_size=config['splitting']['chunk-size']
+    conda: 'envs/racon.yaml'
+    shell:
+        '''
+        mkdir {output}
+        rampler split -o {output} {input.fasta} {params.chunk_size}
+        '''
+
+def get_fasta_slices(wildcards):
+    checkpoint_output = checkpoints.split_fasta.get().output[0]
+    fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
+    gwc = glob_wildcards(fname_pattern)
+    raw_files = expand(str(fname_pattern), part=gwc.part)
+    files = sorted(raw_files, key=lambda x: int(re.search(r'\d+', x).group(0)))
+    return files
+
+def get_arrow_aggregate_input(wildcards):
+    checkpoint_output = checkpoints.split_fasta.get().output[0]
+    fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
+    gwc = glob_wildcards(fname_pattern)
+    return expand('results/arrow/polished_slices/polished_slice_{part}.fa', part=gwc.part)
+
+rule arrow_aggregate:
+    '''
+    Merge the polished FASTA slices from arrow (gcpp).
+    '''
+    input:
+        get_arrow_aggregate_input
+    output:
+        'results/arrow/polished_contigs.fa'
+    shell:
+        'cat {input} > {output}'
+
+rule arrow:
+    '''
+    Run one iteration of arrow on a slice of the assembly (gcpp).
+    '''
+    input:
+        all_fasta=get_fasta_slices,
+        bam='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam'
+    output:
+        'results/arrow/polished_slices/polished_slice_{part}.fa'
+    wildcard_constraints:
+        part=r'\d+'
+    conda: 'envs/arrow.yaml'
+    shell:
+        '''
+        files=({input.all_fasta})
+        slice_fasta=${{files[$(({wildcards.part}))]}}
+        gcpp \
+            --reference ${{slice_fasta}} \
+            --output {output} \
+            {input.bam}
+        '''
+
+rule arrow_bam_slice:
+    '''
+    Get a slice of the alignments to use for polishing with arrow.
+    '''
+    input:
+        all_fasta=get_fasta_slices,
+        bamfiles='results/arrow/aligned_subread_bams.fofn'
+    output:
+        bam='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam',
+        bai='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam.bai'
+    wildcard_constraints:
+        run=r'\d+'
+    conda: 'envs/samtools.yaml'
+    shell:
+        '''
+        files=({input.all_fasta})
+        slice_fasta=${{files[$(({wildcards.part}))]}}
+        samtools faidx ${{slice_fasta}}
+        regions=$(awk '{{if (NR == 1) {{printf("%s", $1)}} else {{printf(",%s", $1)}}}}' ${{slice_fasta}}.fai)
+        samtools merge -b {input.bamfiles} -R "${{regions}}" {output.bam} 
+        samtools index {output.bam}
+        '''
 
 rule bam_fofn:
     '''
