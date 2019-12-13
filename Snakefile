@@ -68,7 +68,7 @@ rule arrow:
     Run one iteration of arrow on a slice of the assembly (gcpp).
     '''
     input:
-        all_fasta=get_fasta_slices,
+        fastafiles='data/contig_slices.fofn',
         bam='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam'
     output:
         'results/arrow/polished_slices/polished_slice_{part}.fa'
@@ -77,20 +77,27 @@ rule arrow:
     conda: 'envs/arrow.yaml'
     shell:
         '''
-        files=({input.all_fasta})
-        slice_fasta=${{files[$(({wildcards.part}))]}}
+        slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         gcpp \
             --reference ${{slice_fasta}} \
             --output {output} \
             {input.bam}
         '''
 
+rule fasta_slice_fofn:
+    input: get_fasta_slices
+    output: 'data/contig_slices.fofn'
+    run:
+        with open(output[0], 'w') as f:
+            for fname in input:
+                print(fname, file=f)
+
 rule arrow_bam_slice:
     '''
     Get a slice of the alignments to use for polishing with arrow.
     '''
     input:
-        all_fasta=get_fasta_slices,
+        fastafiles='data/contig_slices.fofn',
         bamfiles='results/arrow/aligned_subread_bams.fofn'
     output:
         bam='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam',
@@ -100,8 +107,7 @@ rule arrow_bam_slice:
     conda: 'envs/samtools.yaml'
     shell:
         '''
-        files=({input.all_fasta})
-        slice_fasta=${{files[$(({wildcards.part}))]}}
+        slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
         regions=$(awk '{{if (NR == 1) {{printf("%s", $1)}} else {{printf(",%s", $1)}}}}' ${{slice_fasta}}.fai)
         samtools merge -b {input.bamfiles} -R "${{regions}}" {output.bam} 
