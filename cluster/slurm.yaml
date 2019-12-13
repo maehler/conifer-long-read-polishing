@@ -6,6 +6,9 @@ __default__:
     output: "logs/{rule}.{wildcards}.%j.out"
     error: "logs/{rule}.{wildcards}.%j.err"
 
+arrow_bam_slice:
+    time: 360
+
 pbmm2_align:
     time: 600
     ntasks: 10
