@@ -130,15 +130,17 @@ rule arrow_bam_slice:
         rm -r ${{subset_bam_dir}}
 
         # Contigs that are not part of the alignments should be removed from the header
+        new_header=results/arrow/alignment_slices/header_slice_{wildcards.part}.sam
         samtools view -@{threads} -H {output.bam} | \
             awk 'FNR==NR {{x[$1]=FNR}} FNR!=NR && /^@SQ/ {{match($2,/^SN:(.+)$/,arr); if(arr[1] in x){{print $0}};}} FNR!=NR && !/^@SQ/' \
                 ${{region_bed}} - \
-                > results/arrow/alignment_slices/header_slice_{wildcards.part}.sam
-        samtools reheader \
-            results/arrow/alignment_slices/header_slice_{wildcards.part}.sam \
-            {output.bam} > {output.bam}.reheader
+                > ${{new_header}}
+        samtools reheader ${{new_header}} {output.bam} > {output.bam}.reheader
         mv {output.bam}.reheader {output.bam}
         samtools index -@{threads} {output.bam}
+
+        # Clean up a bit
+        rm ${{region_bed}} ${{new_header}}
         '''
 
 rule bam_fofn:
