@@ -74,11 +74,13 @@ rule arrow:
         'results/arrow/polished_slices/polished_slice_{part}.fa'
     wildcard_constraints:
         part=r'\d+'
+    threads: 8
     conda: 'envs/arrow.yaml'
     shell:
         '''
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         gcpp \
+            --num-threads {threads} \
             --reference ${{slice_fasta}} \
             --output {output} \
             {input.bam}
