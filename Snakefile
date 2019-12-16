@@ -104,14 +104,41 @@ rule arrow_bam_slice:
         bai='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam.bai'
     wildcard_constraints:
         run=r'\d+'
+    threads: 8
     conda: 'envs/samtools.yaml'
     shell:
         '''
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
-        regions=$(awk '{{if (NR == 1) {{printf("%s", $1)}} else {{printf(",%s", $1)}}}}' ${{slice_fasta}}.fai)
-        samtools merge -b {input.bamfiles} -R "${{regions}}" {output.bam} 
-        samtools index {output.bam}
+        region_bed='results/arrow/alignment_slices/slice_{wildcards.part}.bed'
+        awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
+
+        subset_bam_dir="$(dirname {output.bam})/subset_bams_{wildcards.part}"
+        mkdir -p ${{subset_bam_dir}}
+
+        parallel --link -j{threads} samtools view -bL {{1}} -o {{2}} {{3}} \
+            ::: ${{region_bed}} \
+            ::: $(cat {input.bamfiles} | \
+                    xargs -n1 \
+                        basename | \
+                    xargs -n1 -IBAMFILE \
+                        echo ${{subset_bam_dir}}/BAMFILE.subset) \
+            :::: {input.bamfiles}
+
+        find ${{subset_bam_dir}} -type f -name "*.bam.subset" > ${{subset_bam_dir}}/subset_bams.fofn
+        samtools merge -@{threads} -b ${{subset_bam_dir}}/subset_bams.fofn {output.bam}
+        rm -r ${{subset_bam_dir}}
+
+        # Contigs that are not part of the alignments should be removed from the header
+        samtools view -@{threads} -H {output.bam} | \
+            awk 'FNR==NR {{x[$1]=FNR}} FNR!=NR && /^@SQ/ {{match($2,/^SN:(.+)$/,arr); if(arr[1] in x){{print $0}};}} FNR!=NR && !/^@SQ/' \
+                ${{region_bed}} - \
+                > results/arrow/alignment_slices/header_slice_{wildcards.part}.sam
+        samtools reheader \
+            results/arrow/alignment_slices/header_slice_{wildcards.part}.sam \
+            {output.bam} > {output.bam}.reheader
+        mv {output.bam}.reheader {output.bam}
+        samtools index -@{threads} {output.bam}
         '''
 
 rule bam_fofn:

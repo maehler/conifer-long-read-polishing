@@ -7,7 +7,8 @@ __default__:
     error: "logs/{rule}.{wildcards}.%j.err"
 
 arrow_bam_slice:
-    time: 360
+    time: 720
+    ntasks: 8
 
 pbmm2_align:
     time: 600
