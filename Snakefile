@@ -129,12 +129,12 @@ rule arrow_bam_slice:
 
         find ${{subset_bam_dir}} -type f -name "*.bam.subset" > ${{subset_bam_dir}}/subset_bams.fofn
         tmp_sam={output.bam}.tmpsam
-        samtools merge -@{threads} -b ${{subset_bam_dir}}/subset_bams.fofn -O SAM ${{tmp_sam}}
+        samtools merge -@ $(({threads} - 1)) -f -b ${{subset_bam_dir}}/subset_bams.fofn -O SAM ${{tmp_sam}}
 
         # Contigs that are not part of the alignments should be removed from the header
         awk 'FNR==NR{{x[$1]=FNR}}FNR!=NR&&/^@SQ/{{match($2,/^SN:(.+)$/,a);if(a[1] in x){{print $0}};}}FNR!=NR&&!/^@SQ/' \
-            ${{region_bed}} ${{tmp_sam}} | samtools view -@{threads} -hbo {output.bam}
-        samtools index -@{threads} {output.bam}
+            ${{region_bed}} ${{tmp_sam}} | samtools view -@ $(({threads} - 1)) -hbo {output.bam}
+        samtools index -@ {threads} {output.bam}
 
         # Clean up a bit
         rm -rf ${{region_bed}} ${{tmp_sam}} ${{subset_bam_dir}}
