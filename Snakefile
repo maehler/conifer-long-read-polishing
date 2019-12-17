@@ -128,21 +128,16 @@ rule arrow_bam_slice:
             :::: {input.bamfiles}
 
         find ${{subset_bam_dir}} -type f -name "*.bam.subset" > ${{subset_bam_dir}}/subset_bams.fofn
-        samtools merge -@{threads} -b ${{subset_bam_dir}}/subset_bams.fofn {output.bam}
-        rm -r ${{subset_bam_dir}}
+        tmp_sam={output.bam}.tmpsam
+        samtools merge -@{threads} -b ${{subset_bam_dir}}/subset_bams.fofn -O SAM ${{tmp_sam}}
 
         # Contigs that are not part of the alignments should be removed from the header
-        new_header=results/arrow/alignment_slices/header_slice_{wildcards.part}.sam
-        samtools view -@{threads} -H {output.bam} | \
-            awk 'FNR==NR {{x[$1]=FNR}} FNR!=NR && /^@SQ/ {{match($2,/^SN:(.+)$/,arr); if(arr[1] in x){{print $0}};}} FNR!=NR && !/^@SQ/' \
-                ${{region_bed}} - \
-                > ${{new_header}}
-        samtools reheader ${{new_header}} {output.bam} > {output.bam}.reheader
-        mv {output.bam}.reheader {output.bam}
+        awk 'FNR==NR{{x[$1]=FNR}}FNR!=NR&&/^@SQ/{{match($2,/^SN:(.+)$/,a);if(a[1] in x){{print $0}};}}FNR!=NR&&!/^@SQ/' \
+            ${{region_bed}} ${{tmp_sam}} | samtools view -@{threads} -hbo {output.bam}
         samtools index -@{threads} {output.bam}
 
         # Clean up a bit
-        rm ${{region_bed}} ${{new_header}}
+        rm -rf ${{region_bed}} ${{new_header}} ${{tmp_sam}} ${{subset_bam_dir}}
         '''
 
 rule bam_fofn:
