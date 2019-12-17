@@ -8,11 +8,11 @@ __default__:
 
 arrow:
     time: 300
-    ntasks: 8
+    ntasks: 10
 
 arrow_bam_slice:
     time: 720
-    ntasks: 8
+    ntasks: 10
 
 pbmm2_align:
     time: 600

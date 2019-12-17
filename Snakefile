@@ -74,7 +74,7 @@ rule arrow:
         'results/arrow/polished_slices/polished_slice_{part}.fa'
     wildcard_constraints:
         part=r'\d+'
-    threads: 8
+    threads: 10
     conda: 'envs/arrow.yaml'
     shell:
         '''
@@ -106,7 +106,7 @@ rule arrow_bam_slice:
         bai='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam.bai'
     wildcard_constraints:
         run=r'\d+'
-    threads: 8
+    threads: 10
     conda: 'envs/samtools.yaml'
     shell:
         '''
