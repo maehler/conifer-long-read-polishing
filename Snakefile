@@ -115,7 +115,7 @@ rule arrow_bam_slice:
         region_bed="$(dirname {output.bam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        subset_bam_dir=$(realpath -es "$(dirname {output.bam})/subset_bams_{wildcards.part}")
+        subset_bam_dir=$(realpath -s "$(dirname {output.bam})/subset_bams_{wildcards.part}")
         mkdir -p ${{subset_bam_dir}}
 
         parallel --link -j{threads} samtools view -bL {{1}} -o {{2}} {{3}} \
