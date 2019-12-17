@@ -92,7 +92,7 @@ rule fasta_slice_fofn:
     run:
         with open(output[0], 'w') as f:
             for fname in input:
-                print(fname, file=f)
+                print(Path(fname).absolute(), file=f)
 
 rule arrow_bam_slice:
     '''
@@ -115,7 +115,7 @@ rule arrow_bam_slice:
         region_bed="$(dirname {output.bam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        subset_bam_dir="$(dirname {output.bam})/subset_bams_{wildcards.part}"
+        subset_bam_dir=$(realpath -es "$(dirname {output.bam})/subset_bams_{wildcards.part}")
         mkdir -p ${{subset_bam_dir}}
 
         parallel --link -j{threads} samtools view -bL {{1}} -o {{2}} {{3}} \
