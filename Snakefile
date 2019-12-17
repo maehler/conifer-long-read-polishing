@@ -69,7 +69,7 @@ rule arrow:
     '''
     input:
         fastafiles='data/contig_slices.fofn',
-        bam='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam'
+        bam='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam'
     output:
         'results/arrow/polished_slices/polished_slice_{part}.fa'
     wildcard_constraints:
@@ -100,10 +100,10 @@ rule arrow_bam_slice:
     '''
     input:
         fastafiles='data/contig_slices.fofn',
-        bamfiles='results/arrow/aligned_subread_bams.fofn'
+        bamfiles='results/alignments/aligned_subread_bams.fofn'
     output:
-        bam='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam',
-        bai='results/arrow/alignment_slices/subread_alignments_slice_{part}.bam.bai'
+        bam='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam',
+        bai='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam.bai'
     wildcard_constraints:
         run=r'\d+'
     threads: 8
@@ -112,7 +112,7 @@ rule arrow_bam_slice:
         '''
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
-        region_bed='results/arrow/alignment_slices/slice_{wildcards.part}.bed'
+        region_bed="$(dirname {output.bam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
         subset_bam_dir="$(dirname {output.bam})/subset_bams_{wildcards.part}"
@@ -137,7 +137,7 @@ rule arrow_bam_slice:
         samtools index -@{threads} {output.bam}
 
         # Clean up a bit
-        rm -rf ${{region_bed}} ${{new_header}} ${{tmp_sam}} ${{subset_bam_dir}}
+        rm -rf ${{region_bed}} ${{tmp_sam}} ${{subset_bam_dir}}
         '''
 
 rule bam_fofn:
@@ -145,9 +145,9 @@ rule bam_fofn:
     Create a file of filenames (fofn) of all subreads
     aligned to the assembly.
     '''
-    input: expand('results/alignments/{bam_name}_alignments.bam', \
+    input: expand('results/alignments/subread_alignments/{bam_name}_alignments.bam', \
                   bam_name=[Path(x).stem for x in read_metadata.filename[read_metadata.filetype == 'bam']])
-    output: 'results/arrow/aligned_subread_bams.fofn'
+    output: 'results/alignments/aligned_subread_bams.fofn'
     shell: 'printf "%s\\n" $(realpath -es {input}) > {output}'
 
 def get_full_bam_path(wildcards):
@@ -173,7 +173,7 @@ rule pbmm2_align:
             .format(reference=Path(config['contig_fasta']).stem),
         query_bam=get_full_bam_path
     output:
-        'results/alignments/{bam_name}_alignments.bam'
+        'results/alignments/subread_alignments/{bam_name}_alignments.bam'
     threads: 10
     params:
         preset='SUBREAD',
