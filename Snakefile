@@ -140,6 +140,17 @@ rule arrow_bam_slice:
         rm -rf ${{region_bed}} ${{tmp_sam}} ${{subset_bam_dir}}
         '''
 
+rule merge_minimap_bams:
+    input: 'results/alignments/aligned_subread_bams.fofn'
+    output:
+        bam='results/alignments/all_subread_alignments.bam'
+    conda: 'envs/samtools.yaml'
+    threads: 20
+    shell:
+        '''
+        samtools merge -@ $(({threads} - 1)) --write-index -b {input} {output.bam}
+        '''
+
 rule bam_fofn:
     '''
     Create a file of filenames (fofn) of all subreads
