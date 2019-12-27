@@ -103,8 +103,7 @@ rule bam_slice:
         fastafiles='data/contig_slices.fofn',
         bam='results/alignments/all_subread_alignments.bam'
     output:
-        bam='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam',
-        bai='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam.bai'
+        sam='results/alignments/alignment_slices/subread_alignments_slice_{part}.sam.gz',
     wildcard_constraints:
         run=r'\d+'
     threads: 10
@@ -114,11 +113,11 @@ rule bam_slice:
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
 
-        region_bed="$(dirname {output.bam})/slice_{wildcards.part}.bed"
+        region_bed="$(dirname {output.sam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        samtools view -@$(({threads} - 1)) -bML ${{region_bed}} {input.bam} > {output.bam}
-        samtools index -@{threads} {output.bam}
+        samtools view -@$(({threads} - 1)) -bML ${{region_bed}} -o {output.sam} {input.bam}
+        samtools index -@{threads} {output.sam}
 
         rm ${{region_bed}}
         '''
