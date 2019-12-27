@@ -86,6 +86,32 @@ rule arrow:
             {input.bam}
         '''
 
+rule racon:
+    '''
+    Run one round of polishing using racon.
+    '''
+    input:
+        fastafiles='data/contig_slices.fofn',
+        sam='results/alignments/alignment_slices/subread_alignments_slice_{part}.sam.gz'
+    output:
+        fasta='results/racon/polished_slices/polished_slice_{part}.fa'
+    wildcard_constraints:
+        part=r'\d+'
+    threads: 10
+    conda: 'envs/racon.yaml'
+    shell:
+        '''
+        slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
+
+        samtools fastq {input.sam} | \\
+            pigz -c -p {threads} > {input.sam}.fq.gz
+
+        racon --include-unpolished --threads {threads} \\
+            {input.sam}.fq.gz \\
+            {input.sam} \\
+            ${{slice_fasta}} > {output.fasta}
+        '''
+
 rule fasta_slice_fofn:
     input: get_fasta_slices
     output: 'data/contig_slices.fofn'

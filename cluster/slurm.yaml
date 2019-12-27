@@ -10,6 +10,10 @@ arrow:
     time: 180
     ntasks: 10
 
+racon:
+    time: 20
+    ntasks: 10
+
 bam_slice:
     time: 20
     ntasks: 10

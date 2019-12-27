@@ -5,3 +5,4 @@ channels:
     - defaults
 dependencies:
     - racon=1.4.10
+    - samtools=1.10
