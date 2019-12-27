@@ -10,7 +10,7 @@ arrow:
     time: 180
     ntasks: 10
 
-arrow_bam_slice:
+bam_slice:
     time: 300
     ntasks: 10
 

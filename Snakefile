@@ -94,13 +94,14 @@ rule fasta_slice_fofn:
             for fname in input:
                 print(Path(fname).absolute(), file=f)
 
-rule arrow_bam_slice:
+
+rule bam_slice:
     '''
-    Get a slice of the alignments to use for polishing with arrow.
+    Get a slice of the alignments to use for polishing.
     '''
     input:
         fastafiles='data/contig_slices.fofn',
-        bamfiles='results/alignments/aligned_subread_bams.fofn'
+        bam='results/alignments/all_subread_alignments.bam'
     output:
         bam='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam',
         bai='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam.bai'
@@ -112,32 +113,14 @@ rule arrow_bam_slice:
         '''
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
+
         region_bed="$(dirname {output.bam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        subset_bam_dir=$(realpath -s "$(dirname {output.bam})/subset_bams_{wildcards.part}")
-        mkdir -p ${{subset_bam_dir}}
+        samtools view -@$(({threads} - 1)) -bML ${{region_bed}} {input.bam} > {output.bam}
+        samtools index -@{threads} {output.bam}
 
-        parallel --link -j{threads} samtools view -bL {{1}} -o {{2}} {{3}} \
-            ::: ${{region_bed}} \
-            ::: $(cat {input.bamfiles} | \
-                    xargs -n1 \
-                        basename | \
-                    xargs -n1 -IBAMFILE \
-                        echo ${{subset_bam_dir}}/BAMFILE.subset) \
-            :::: {input.bamfiles}
-
-        find ${{subset_bam_dir}} -type f -name "*.bam.subset" > ${{subset_bam_dir}}/subset_bams.fofn
-        tmp_sam={output.bam}.tmpsam
-        samtools merge -@ $(({threads} - 1)) -f -b ${{subset_bam_dir}}/subset_bams.fofn -O SAM ${{tmp_sam}}
-
-        # Contigs that are not part of the alignments should be removed from the header
-        awk 'FNR==NR{{x[$1]=FNR}}FNR!=NR&&/^@SQ/{{match($2,/^SN:(.+)$/,a);if(a[1] in x){{print $0}};}}FNR!=NR&&!/^@SQ/' \
-            ${{region_bed}} ${{tmp_sam}} | samtools view -@ $(({threads} - 1)) -hbo {output.bam}
-        samtools index -@ {threads} {output.bam}
-
-        # Clean up a bit
-        rm -rf ${{region_bed}} ${{tmp_sam}} ${{subset_bam_dir}}
+        rm ${{region_bed}}
         '''
 
 rule merge_minimap_bams:
