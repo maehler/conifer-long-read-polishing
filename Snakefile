@@ -79,10 +79,10 @@ rule arrow:
     shell:
         '''
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
-        gcpp \
-            --num-threads {threads} \
-            --reference ${{slice_fasta}} \
-            --output {output} \
+        gcpp \\
+            --num-threads {threads} \\
+            --reference ${{slice_fasta}} \\
+            --output {output} \\
             {input.bam}
         '''
 
@@ -119,7 +119,6 @@ rule fasta_slice_fofn:
         with open(output[0], 'w') as f:
             for fname in input:
                 print(Path(fname).absolute(), file=f)
-
 
 rule bam_slice:
     '''
@@ -199,13 +198,13 @@ rule pbmm2_align:
     conda: 'envs/arrow.yaml'
     shell:
         '''
-        pbmm2 align \
-            --preset {params.preset} \
-            --sort \
-            -m 4G \
-            -j {threads} \
-            {input.reference} \
-            {input.query_bam} \
+        pbmm2 align \\
+            --preset {params.preset} \\
+            --sort \\
+            -m 4G \\
+            -j {threads} \\
+            {input.reference} \\
+            {input.query_bam} \\
             {output}
         '''
 
@@ -221,10 +220,10 @@ rule pbmm2_index:
     conda: 'envs/arrow.yaml'
     shell:
         '''
-        pbmm2 index \
-            --num-threads {threads} \
-            --preset {params.preset} \
-            {input} \
+        pbmm2 index \\
+            --num-threads {threads} \\
+            --preset {params.preset} \\
+            {input} \\
             {output}
         '''
 
