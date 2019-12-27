@@ -11,7 +11,7 @@ arrow:
     ntasks: 10
 
 bam_slice:
-    time: 300
+    time: 20
     ntasks: 10
 
 merge_minimap_bams:
