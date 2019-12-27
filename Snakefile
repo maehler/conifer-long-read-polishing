@@ -97,7 +97,7 @@ rule fasta_slice_fofn:
 
 rule bam_slice:
     '''
-    Get a slice of the alignments to use for polishing.
+    Get a slice of the alignments to use for polishing with racon.
     '''
     input:
         fastafiles='data/contig_slices.fofn',
@@ -116,8 +116,8 @@ rule bam_slice:
         region_bed="$(dirname {output.sam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        samtools view -@$(({threads} - 1)) -ML ${{region_bed}} -o {output.sam} {input.bam}
-        samtools index -@{threads} {output.sam}
+        samtools view -@$(({threads} - 1)) -bML ${{region_bed}} {input.bam} | \\
+            samtools sort -@$(({threads} - 1)) -m 4G -n -o {output.sam}
 
         rm ${{region_bed}}
         '''
