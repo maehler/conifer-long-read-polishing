@@ -116,7 +116,7 @@ rule bam_slice:
         region_bed="$(dirname {output.sam})/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        samtools view -@$(({threads} - 1)) -bML ${{region_bed}} -o {output.sam} {input.bam}
+        samtools view -@$(({threads} - 1)) -ML ${{region_bed}} -o {output.sam} {input.bam}
         samtools index -@{threads} {output.sam}
 
         rm ${{region_bed}}
