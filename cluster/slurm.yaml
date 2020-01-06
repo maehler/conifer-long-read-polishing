@@ -14,10 +14,6 @@ racon:
     time: 20
     ntasks: 10
 
-bam_slice:
-    time: 20
-    ntasks: 10
-
 merge_minimap_bams:
     time: 1080
     ntasks: 20

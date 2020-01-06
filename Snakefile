@@ -126,25 +126,36 @@ rule bam_slice:
     '''
     input:
         fastafiles='data/contig_slices.fofn',
-        bam='results/alignments/all_subread_alignments.bam'
+        bam='results/alignments/aligned_subread_bams.fofn'
     output:
         sam='results/alignments/alignment_slices/subread_alignments_slice_{part}.sam.gz',
     wildcard_constraints:
         run=r'\d+'
-    threads: 10
+    threads: 1
     conda: 'envs/samtools.yaml'
     shell:
         '''
         slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
 
-        region_bed="$(dirname {output.sam})/slice_{wildcards.part}.bed"
+        tmpdir="$(dirname {output.sam})/slice_{wildcards.part}_tmp"
+        mkdir -p ${{tmpdir}}
+
+        region_bed="${{tmpdir}}/slice_{wildcards.part}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
-        samtools view -@$(({threads} - 1)) -bML ${{region_bed}} {input.bam} | \\
-            samtools sort -@$(({threads} - 1)) -m 4G -n -o {output.sam}
+        while read -r bamfile; do
+            echo ${{bamfile}}
+            samtools view -@$(({threads} - 1)) -ML ${{region_bed}} -o ${{tmpdir}}/$(basename ${{bamfile}}).slice.bam ${{bamfile}}
+        done < {input.bam}
 
-        rm ${{region_bed}}
+        bam_fofn=${{tmpdir}}/alignment_bams.fofn
+        find ${{tmpdir}} -type f -name "*.slice.bam" > ${{bam_fofn}}
+
+        samtools merge -@$(({threads} - 1)) -b ${{bam_fofn}} ${{tmpdir}}/merged.bam
+        samtools sort -@$(({threads} - 1)) -m 4G -n -o {output.sam} ${{tmpdir}}/merged.bam
+
+        rm -r ${{tmpdir}}
         '''
 
 rule merge_minimap_bams:
