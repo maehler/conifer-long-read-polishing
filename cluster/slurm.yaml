@@ -10,8 +10,11 @@ arrow:
     time: 180
     ntasks: 10
 
+bam_slice:
+    time: 180
+
 racon:
-    time: 20
+    time: 180
     ntasks: 10
 
 merge_minimap_bams:
