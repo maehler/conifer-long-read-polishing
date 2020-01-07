@@ -152,7 +152,7 @@ rule bam_slice:
         bam_fofn=${{tmpdir}}/alignment_bams.fofn
         find ${{tmpdir}} -type f -name "*.slice.bam" > ${{bam_fofn}}
 
-        samtools merge -@$(({threads} - 1)) -b ${{bam_fofn}} ${{tmpdir}}/merged.bam
+        samtools merge -f -@$(({threads} - 1)) -b ${{bam_fofn}} ${{tmpdir}}/merged.bam
         samtools sort -@$(({threads} - 1)) -m 4G -n -o {output.sam} ${{tmpdir}}/merged.bam
 
         rm -r ${{tmpdir}}
