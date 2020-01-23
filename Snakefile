@@ -13,10 +13,11 @@ validate(read_metadata, 'schemas/read_metadata.schema.yaml')
 
 localrules: all, bam_fofn, symlink_assembly, cluster_config,
             arrow_aggregate, split_fasta, index_fasta,
-            fasta_slice_fofn
+            fasta_slice_fofn, racon_aggregate, polished_fofn,
+            bgzip
 
 rule all:
-    input: 'results/arrow/aligned_subread_bams.fofn'
+    input: 'results/racon/polished_contigs.fa.gz'
 
 rule index_fasta:
     input: '{filename}.fa'
@@ -52,16 +53,41 @@ def get_arrow_aggregate_input(wildcards):
     gwc = glob_wildcards(fname_pattern)
     return expand('results/arrow/polished_slices/polished_slice_{part}.fa', part=gwc.part)
 
+def get_racon_aggregate_input(wildcards):
+    checkpoint_output = checkpoints.split_fasta.get().output[0]
+    fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
+    gwc = glob_wildcards(fname_pattern)
+    return expand('results/racon/polished_slices/polished_slice_{part}.fa', part=gwc.part)
+
+rule polished_fofn:
+    input: get_racon_aggregate_input
+    output: 'results/racon/polished_slices.fofn'
+    run:
+        with open(output[0], 'w') as f:
+            for fname in input:
+                print(Path(fname).absolute(), file=f)
+
+rule bgzip:
+    '''
+    Compress a file with bgzip
+    '''
+    input: '{filename}'
+    output: '{filename}.gz'
+    wildcard_constraints:
+        filename=r'.+(?<!\.gz)'
+    conda: 'envs/samtools.yaml'
+    shell: 'bgzip {input}'
+
 rule arrow_aggregate:
     '''
     Merge the polished FASTA slices from arrow (gcpp).
     '''
     input:
-        get_arrow_aggregate_input
+        'results/racon/polished_slices.fofn'
     output:
         'results/arrow/polished_contigs.fa'
     shell:
-        'cat {input} > {output}'
+        'cat {input} | xargs -n100 cat > {output}'
 
 rule arrow:
     '''
@@ -85,6 +111,17 @@ rule arrow:
             --output {output} \\
             {input.bam}
         '''
+
+rule racon_aggregate:
+    '''
+    Merge the polished FASTA slices from racon.
+    '''
+    input:
+        'results/racon/polished_slices.fofn'
+    output:
+        'results/racon/polished_contigs.fa'
+    shell:
+        'cat {input} | xargs -n100 cat > {output}'
 
 rule racon:
     '''
