@@ -12,7 +12,7 @@ read_metadata = pd.read_table(config['read_metadata']) \
 validate(read_metadata, 'schemas/read_metadata.schema.yaml')
 
 localrules: all, bam_fofn, symlink_assembly, cluster_config,
-            arrow_aggregate, split_fasta, index_fasta,
+            split_fasta, index_fasta,
             fasta_slice_fofn, racon_aggregate, polished_fofn,
             bgzip
 
@@ -47,12 +47,6 @@ def get_fasta_slices(wildcards):
     files = sorted(raw_files, key=lambda x: int(re.search(r'\d+', x).group(0)))
     return files
 
-def get_arrow_aggregate_input(wildcards):
-    checkpoint_output = checkpoints.split_fasta.get().output[0]
-    fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
-    gwc = glob_wildcards(fname_pattern)
-    return expand('results/arrow/polished_slices/polished_slice_{part}.fa', part=gwc.part)
-
 def get_racon_aggregate_input(wildcards):
     checkpoint_output = checkpoints.split_fasta.get().output[0]
     fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
@@ -77,40 +71,6 @@ rule bgzip:
         filename=r'.+(?<!\.gz)'
     conda: 'envs/samtools.yaml'
     shell: 'bgzip {input}'
-
-rule arrow_aggregate:
-    '''
-    Merge the polished FASTA slices from arrow (gcpp).
-    '''
-    input:
-        'results/racon/polished_slices.fofn'
-    output:
-        'results/arrow/polished_contigs.fa'
-    shell:
-        'cat {input} | xargs -n100 cat > {output}'
-
-rule arrow:
-    '''
-    Run one iteration of arrow on a slice of the assembly (gcpp).
-    '''
-    input:
-        fastafiles='data/contig_slices.fofn',
-        bam='results/alignments/alignment_slices/subread_alignments_slice_{part}.bam'
-    output:
-        'results/arrow/polished_slices/polished_slice_{part}.fa'
-    wildcard_constraints:
-        part=r'\d+'
-    threads: 10
-    conda: 'envs/arrow.yaml'
-    shell:
-        '''
-        slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
-        gcpp \\
-            --num-threads {threads} \\
-            --reference ${{slice_fasta}} \\
-            --output {output} \\
-            {input.bam}
-        '''
 
 rule racon_aggregate:
     '''
