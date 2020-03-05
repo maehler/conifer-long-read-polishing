@@ -16,7 +16,8 @@ localrules: all, bam_fofn, symlink_assembly, cluster_config,
             fasta_slice_fofn, racon_aggregate, polished_fofn
 
 wildcard_constraints:
-    iteration=r'\d+'
+    iteration=r'\d+',
+    slice=r'\d+'
 
 rule all:
     input: 'data/contigs_racon_{iteration}.fasta'.format(iteration=config['iterations'])
@@ -58,10 +59,10 @@ checkpoint split_fasta:
 
 def get_fasta_slices(wildcards):
     checkpoint_output = checkpoints.split_fasta.get(iteration=wildcards.iteration).output[0]
-    fname_pattern = '{output_dir}/contigs_racon_{iteration}_{{part}}.fasta' \
+    fname_pattern = '{output_dir}/contigs_racon_{iteration}_{{slice}}.fasta' \
         .format(output_dir=checkpoint_output, iteration=wildcards.iteration)
     gwc = glob_wildcards(fname_pattern)
-    raw_files = expand(fname_pattern, part=gwc.part)
+    raw_files = expand(fname_pattern, slice=gwc.slice)
     files = sorted(raw_files, key=lambda x: int(re.search(r'(\d+)\.fasta$', x).group(1)))
     return files
 
@@ -69,11 +70,11 @@ def get_racon_aggregate_input(wildcards):
     checkpoint_output = checkpoints.split_fasta \
         .get(iteration=int(wildcards.iteration)-1) \
         .output[0]
-    fname_pattern = '{output_dir}/contigs_racon_{iteration}_{{part}}.fasta' \
+    fname_pattern = '{output_dir}/contigs_racon_{iteration}_{{slice}}.fasta' \
         .format(output_dir=checkpoint_output, iteration=int(wildcards.iteration)-1)
     gwc = glob_wildcards(fname_pattern)
-    fnames = expand('results/racon_{iteration}/polished_slices/polished_slice_{part}.fasta',
-        iteration=wildcards.iteration, part=gwc.part)
+    fnames = expand('results/racon_{iteration}/polished_slices/polished_slice_{slice}.fasta',
+        iteration=wildcards.iteration, slice=gwc.slice)
     return sorted(fnames, key=lambda x: int(re.search(r'(\d+)\.fasta$', x).group(1)))
 
 rule racon_aggregate:
@@ -96,17 +97,15 @@ rule racon:
     input:
         fastafiles=lambda wildcards: 'data/contigs_racon_{iteration}_slices.fofn' \
             .format(iteration=int(wildcards.iteration)-1),
-        sam=lambda wildcards: 'results/alignments/alignment_slices_{iteration}/subread_alignments_slice_{{part}}.sam.gz' \
+        sam=lambda wildcards: 'results/alignments/alignment_slices_{iteration}/subread_alignments_slice_{{slice}}.sam.gz' \
             .format(iteration=int(wildcards.iteration)-1)
     output:
-        fasta='results/racon_{iteration}/polished_slices/polished_slice_{part}.fasta'
-    wildcard_constraints:
-        part=r'\d+'
+        fasta='results/racon_{iteration}/polished_slices/polished_slice_{slice}.fasta'
     threads: 10
     conda: 'envs/racon.yaml'
     shell:
         '''
-        slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
+        slice_fasta=$(awk 'NR == {wildcards.slice} + 1' {input.fastafiles})
 
         samtools fastq {input.sam} | \\
             pigz -c -p {threads} > {input.sam}.fq.gz
@@ -133,20 +132,20 @@ rule bam_slice:
         fastafiles='data/contigs_racon_{iteration}_slices.fofn',
         bam='results/alignments/aligned_subread_bams_{iteration}.fofn'
     output:
-        sam='results/alignments/alignment_slices_{iteration}/subread_alignments_slice_{part}.sam.gz',
+        sam='results/alignments/alignment_slices_{iteration}/subread_alignments_slice_{slice}.sam.gz',
     wildcard_constraints:
         run=r'\d+'
     threads: 1
     conda: 'envs/samtools.yaml'
     shell:
         '''
-        slice_fasta=$(awk 'NR == {wildcards.part} + 1' {input.fastafiles})
+        slice_fasta=$(awk 'NR == {wildcards.slice} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
 
-        tmpdir="$(dirname {output.sam})/slice_{wildcards.part}_tmp"
+        tmpdir="$(dirname {output.sam})/slice_{wildcards.slice}_tmp"
         mkdir -p ${{tmpdir}}
 
-        region_bed="${{tmpdir}}/slice_{wildcards.part}.bed"
+        region_bed="${{tmpdir}}/slice_{wildcards.slice}.bed"
         awk 'BEGIN {{OFS="\\t"}} {{print $1, 0, $2}}' ${{slice_fasta}}.fai > ${{region_bed}}
 
         while read -r bamfile; do
