@@ -2,7 +2,9 @@ import os
 import pandas as pd
 from pathlib import Path
 import re
-from snakemake.utils import validate
+from snakemake.utils import validate, min_version
+
+min_version('5.10.0')
 
 configfile: 'config.yaml'
 validate(config, 'schemas/config.schema.yaml')
