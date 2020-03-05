@@ -23,17 +23,17 @@ rule all:
     input: 'data/contigs_racon_{iteration}.fasta'.format(iteration=config['iterations'])
 
 rule symlink_assembly:
-    '''
+    """
     Symlink the assembly FASTA file to the project directory.
-    '''
+    """
     input: Path(config['contig_fasta']).absolute()
     output: 'data/contigs_racon_0.fasta'
     priority: 50
     shell:
-        '''
+        """
         cd $(dirname {output})
         ln -s {input} $(basename {output})
-        '''
+        """
 
 rule index_fasta:
     input: '{filename}.{extension}'
@@ -52,10 +52,10 @@ checkpoint split_fasta:
         chunk_size=config['splitting']['chunk-size']
     conda: 'envs/racon.yaml'
     shell:
-        '''
+        """
         mkdir {output}
         rampler split -o {output} {input.fasta} {params.chunk_size}
-        '''
+        """
 
 def get_fasta_slices(wildcards):
     checkpoint_output = checkpoints.split_fasta.get(iteration=wildcards.iteration).output[0]
@@ -78,9 +78,9 @@ def get_racon_aggregate_input(wildcards):
     return sorted(fnames, key=lambda x: int(re.search(r'(\d+)\.fasta$', x).group(1)))
 
 rule racon_aggregate:
-    '''
+    """
     Merge the polished FASTA slices from racon.
-    '''
+    """
     input: get_racon_aggregate_input
     output:
         fasta=protected('results/racon_{iteration}/contigs_racon_{iteration}.fasta'),
@@ -91,9 +91,9 @@ rule racon_aggregate:
             print('\n'.join(str(Path(x).resolve()) for x in input), file=f)
 
 rule racon:
-    '''
+    """
     Run one round of polishing using racon.
-    '''
+    """
     input:
         fastafiles=lambda wildcards: 'data/contigs_racon_{iteration}_slices.fofn' \
             .format(iteration=int(wildcards.iteration)-1),
@@ -104,7 +104,7 @@ rule racon:
     threads: 10
     conda: 'envs/racon.yaml'
     shell:
-        '''
+        """
         slice_fasta=$(awk 'NR == {wildcards.slice} + 1' {input.fastafiles})
 
         samtools fastq {input.sam} | \\
@@ -114,7 +114,7 @@ rule racon:
             {input.sam}.fq.gz \\
             {input.sam} \\
             ${{slice_fasta}} > {output.fasta}
-        '''
+        """
 
 rule fasta_slice_fofn:
     input: get_fasta_slices
@@ -125,9 +125,9 @@ rule fasta_slice_fofn:
                 print(Path(fname).absolute(), file=f)
 
 rule bam_slice:
-    '''
+    """
     Get a slice of the alignments to use for polishing with racon.
-    '''
+    """
     input:
         fastafiles='data/contigs_racon_{iteration}_slices.fofn',
         bam='results/alignments/aligned_subread_bams_{iteration}.fofn'
@@ -138,7 +138,7 @@ rule bam_slice:
     threads: 1
     conda: 'envs/samtools.yaml'
     shell:
-        '''
+        """
         slice_fasta=$(awk 'NR == {wildcards.slice} + 1' {input.fastafiles})
         samtools faidx ${{slice_fasta}}
 
@@ -160,7 +160,7 @@ rule bam_slice:
         samtools sort -@$(({threads} - 1)) -m 4G -n -o {output.sam} ${{tmpdir}}/merged.bam
 
         rm -r ${{tmpdir}}
-        '''
+        """
 
 rule merge_minimap_bams:
     input: 'results/alignments/aligned_subread_bams_{iteration}.fofn'
@@ -169,24 +169,24 @@ rule merge_minimap_bams:
     conda: 'envs/samtools.yaml'
     threads: 20
     shell:
-        '''
+        """
         samtools merge -@ $(({threads} - 1)) --write-index -b {input} {output.bam}
-        '''
+        """
 
 rule bam_fofn:
-    '''
+    """
     Create a file of filenames (fofn) of all subreads
     aligned to the assembly.
-    '''
+    """
     input: expand('results/alignments/subread_alignments_{{iteration}}/{bam_name}_alignments.bam', \
                   bam_name=[Path(x).stem for x in read_metadata.filename[read_metadata.filetype == 'bam']])
     output: 'results/alignments/aligned_subread_bams_{iteration}.fofn'
     shell: 'printf "%s\\n" $(realpath -es {input}) > {output}'
 
 def get_full_bam_path(wildcards):
-    '''
+    """
     Get the full path to a bam file based on its basename.
-    '''
+    """
     matches = [re.search(r'^.+{fname}.bam$'.format(fname=wildcards.bam_name), x) \
                for x in read_metadata.filename]
     matches = [x.group(0) for x in matches if x is not None]
@@ -198,9 +198,9 @@ def get_full_bam_path(wildcards):
     return matches[0]
 
 rule pbmm2_align:
-    '''
+    """
     Align reads with pbmm2, i.e. the PacBio wrapper for minimap2.
-    '''
+    """
     input:
         reference='reference/contigs_racon_{iteration}_subread.mmi',
         query_bam=get_full_bam_path
@@ -210,7 +210,7 @@ rule pbmm2_align:
         preset='SUBREAD',
     conda: 'envs/arrow.yaml'
     shell:
-        '''
+        """
         pbmm2 align \\
             --preset {params.preset} \\
             --sort \\
@@ -219,12 +219,12 @@ rule pbmm2_align:
             {input.reference} \\
             {input.query_bam} \\
             {output}
-        '''
+        """
 
 rule pbmm2_index:
-    '''
+    """
     Create a minimap index for the assembly.
-    '''
+    """
     input: 'data/contigs_racon_{iteration}.fasta'
     output: 'reference/contigs_racon_{iteration}_subread.mmi'
     threads: 20
@@ -232,18 +232,18 @@ rule pbmm2_index:
         preset='SUBREAD'
     conda: 'envs/arrow.yaml'
     shell:
-        '''
+        """
         pbmm2 index \\
             --num-threads {threads} \\
             --preset {params.preset} \\
             {input} \\
             {output}
-        '''
+        """
 
 rule cluster_config:
-    '''
+    """
     Generate a cluster profile.
-    '''
+    """
     output: directory( \
         '{home}/.config/snakemake/{profile_name}' \
             .format(home=Path.home(), \
