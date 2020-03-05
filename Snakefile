@@ -13,23 +13,40 @@ validate(read_metadata, 'schemas/read_metadata.schema.yaml')
 
 localrules: all, bam_fofn, symlink_assembly, cluster_config,
             split_fasta, index_fasta,
-            fasta_slice_fofn, racon_aggregate, polished_fofn,
-            bgzip
+            fasta_slice_fofn, racon_aggregate, polished_fofn
+
+wildcard_constraints:
+    iteration=r'\d+'
 
 rule all:
-    input: 'results/racon/polished_contigs.fa.gz'
+    input: 'data/contigs_racon_{iteration}.fasta'.format(iteration=config['iterations'])
+
+rule symlink_assembly:
+    '''
+    Symlink the assembly FASTA file to the project directory.
+    '''
+    input: Path(config['contig_fasta']).absolute()
+    output: 'data/contigs_racon_0.fasta'
+    priority: 50
+    shell:
+        '''
+        cd $(dirname {output})
+        ln -s {input} $(basename {output})
+        '''
 
 rule index_fasta:
-    input: '{filename}.fa'
-    output: '{filename}.fa.fai'
+    input: '{filename}.{extension}'
+    output: '{filename}.{extension}.fai'
+    wildcard_constraints:
+        extension=r'fa|fasta'
     conda: 'envs/samtools.yaml'
     shell: 'samtools faidx {input}'
 
 checkpoint split_fasta:
     input:
-        fasta=config['contig_fasta']
+        fasta='data/contigs_racon_{iteration}.fasta'
     output:
-        directory('data/contigs_split')
+        directory('data/contigs_racon_{iteration}_slices')
     params:
         chunk_size=config['splitting']['chunk-size']
     conda: 'envs/racon.yaml'
@@ -40,58 +57,49 @@ checkpoint split_fasta:
         '''
 
 def get_fasta_slices(wildcards):
-    checkpoint_output = checkpoints.split_fasta.get().output[0]
-    fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
+    checkpoint_output = checkpoints.split_fasta.get(iteration=wildcards.iteration).output[0]
+    fname_pattern = '{output_dir}/contigs_racon_{iteration}_{{part}}.fasta' \
+        .format(output_dir=checkpoint_output, iteration=wildcards.iteration)
     gwc = glob_wildcards(fname_pattern)
-    raw_files = expand(str(fname_pattern), part=gwc.part)
-    files = sorted(raw_files, key=lambda x: int(re.search(r'\d+', x).group(0)))
+    raw_files = expand(fname_pattern, part=gwc.part)
+    files = sorted(raw_files, key=lambda x: int(re.search(r'(\d+)\.fasta$', x).group(1)))
     return files
 
 def get_racon_aggregate_input(wildcards):
-    checkpoint_output = checkpoints.split_fasta.get().output[0]
-    fname_pattern = Path(checkpoint_output, '{filename}_{{part}}.fasta'.format(filename=Path(config['contig_fasta']).stem))
+    checkpoint_output = checkpoints.split_fasta \
+        .get(iteration=int(wildcards.iteration)-1) \
+        .output[0]
+    fname_pattern = '{output_dir}/contigs_racon_{iteration}_{{part}}.fasta' \
+        .format(output_dir=checkpoint_output, iteration=int(wildcards.iteration)-1)
     gwc = glob_wildcards(fname_pattern)
-    return expand('results/racon/polished_slices/polished_slice_{part}.fa', part=gwc.part)
-
-rule polished_fofn:
-    input: get_racon_aggregate_input
-    output: 'results/racon/polished_slices.fofn'
-    run:
-        with open(output[0], 'w') as f:
-            for fname in input:
-                print(Path(fname).absolute(), file=f)
-
-rule bgzip:
-    '''
-    Compress a file with bgzip
-    '''
-    input: '{filename}'
-    output: '{filename}.gz'
-    wildcard_constraints:
-        filename=r'.+(?<!\.gz)'
-    conda: 'envs/samtools.yaml'
-    shell: 'bgzip {input}'
+    fnames = expand('results/racon_{iteration}/polished_slices/polished_slice_{part}.fasta',
+        iteration=wildcards.iteration, part=gwc.part)
+    return sorted(fnames, key=lambda x: int(re.search(r'(\d+)\.fasta$', x).group(1)))
 
 rule racon_aggregate:
     '''
     Merge the polished FASTA slices from racon.
     '''
-    input:
-        'results/racon/polished_slices.fofn'
+    input: get_racon_aggregate_input
     output:
-        'results/racon/polished_contigs.fa'
-    shell:
-        'cat {input} | xargs -n100 cat > {output}'
+        fasta=protected('results/racon_{iteration}/contigs_racon_{iteration}.fasta'),
+        linked_fasta='data/contigs_racon_{iteration}.fasta'
+    priority: 10
+    run:
+        with open(output['fasta'], 'w') as f:
+            print('\n'.join(str(Path(x).resolve()) for x in input), file=f)
 
 rule racon:
     '''
     Run one round of polishing using racon.
     '''
     input:
-        fastafiles='data/contig_slices.fofn',
-        sam='results/alignments/alignment_slices/subread_alignments_slice_{part}.sam.gz'
+        fastafiles=lambda wildcards: 'data/contigs_racon_{iteration}_slices.fofn' \
+            .format(iteration=int(wildcards.iteration)-1),
+        sam=lambda wildcards: 'results/alignments/alignment_slices_{iteration}/subread_alignments_slice_{{part}}.sam.gz' \
+            .format(iteration=int(wildcards.iteration)-1)
     output:
-        fasta='results/racon/polished_slices/polished_slice_{part}.fa'
+        fasta='results/racon_{iteration}/polished_slices/polished_slice_{part}.fasta'
     wildcard_constraints:
         part=r'\d+'
     threads: 10
@@ -111,7 +119,7 @@ rule racon:
 
 rule fasta_slice_fofn:
     input: get_fasta_slices
-    output: 'data/contig_slices.fofn'
+    output: 'data/contigs_racon_{iteration}_slices.fofn'
     run:
         with open(output[0], 'w') as f:
             for fname in input:
@@ -122,10 +130,10 @@ rule bam_slice:
     Get a slice of the alignments to use for polishing with racon.
     '''
     input:
-        fastafiles='data/contig_slices.fofn',
-        bam='results/alignments/aligned_subread_bams.fofn'
+        fastafiles='data/contigs_racon_{iteration}_slices.fofn',
+        bam='results/alignments/aligned_subread_bams_{iteration}.fofn'
     output:
-        sam='results/alignments/alignment_slices/subread_alignments_slice_{part}.sam.gz',
+        sam='results/alignments/alignment_slices_{iteration}/subread_alignments_slice_{part}.sam.gz',
     wildcard_constraints:
         run=r'\d+'
     threads: 1
@@ -156,9 +164,9 @@ rule bam_slice:
         '''
 
 rule merge_minimap_bams:
-    input: 'results/alignments/aligned_subread_bams.fofn'
+    input: 'results/alignments/aligned_subread_bams_{iteration}.fofn'
     output:
-        bam='results/alignments/all_subread_alignments.bam'
+        bam='results/alignments/all_subread_alignments_{iteration}.bam'
     conda: 'envs/samtools.yaml'
     threads: 20
     shell:
@@ -171,9 +179,9 @@ rule bam_fofn:
     Create a file of filenames (fofn) of all subreads
     aligned to the assembly.
     '''
-    input: expand('results/alignments/subread_alignments/{bam_name}_alignments.bam', \
+    input: expand('results/alignments/subread_alignments_{{iteration}}/{bam_name}_alignments.bam', \
                   bam_name=[Path(x).stem for x in read_metadata.filename[read_metadata.filetype == 'bam']])
-    output: 'results/alignments/aligned_subread_bams.fofn'
+    output: 'results/alignments/aligned_subread_bams_{iteration}.fofn'
     shell: 'printf "%s\\n" $(realpath -es {input}) > {output}'
 
 def get_full_bam_path(wildcards):
@@ -195,11 +203,9 @@ rule pbmm2_align:
     Align reads with pbmm2, i.e. the PacBio wrapper for minimap2.
     '''
     input:
-        reference='reference/{reference}_subread.mmi' \
-            .format(reference=Path(config['contig_fasta']).stem),
+        reference='reference/contigs_racon_{iteration}_subread.mmi',
         query_bam=get_full_bam_path
-    output:
-        'results/alignments/subread_alignments/{bam_name}_alignments.bam'
+    output: 'results/alignments/subread_alignments_{iteration}/{bam_name}_alignments.bam'
     threads: 10
     params:
         preset='SUBREAD',
@@ -220,8 +226,8 @@ rule pbmm2_index:
     '''
     Create a minimap index for the assembly.
     '''
-    input: 'reference/{reference}.fasta'
-    output: 'reference/{reference}_subread.mmi'
+    input: 'data/contigs_racon_{iteration}.fasta'
+    output: 'reference/contigs_racon_{iteration}_subread.mmi'
     threads: 20
     params:
         preset='SUBREAD'
@@ -233,19 +239,6 @@ rule pbmm2_index:
             --preset {params.preset} \\
             {input} \\
             {output}
-        '''
-
-rule symlink_assembly:
-    '''
-    Symlink the assembly FASTA file to the project directory.
-    '''
-    input: Path(config['contig_fasta']).absolute()
-    output: 'reference/{reference}.fasta' \
-        .format(reference=Path(config['contig_fasta']).stem)
-    shell:
-        '''
-        cd reference
-        ln -s {input} $(basename {output})
         '''
 
 rule cluster_config:

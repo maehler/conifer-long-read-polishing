@@ -4,10 +4,13 @@ contig_fasta: data/contigs.fa
 # Read metadata
 read_metadata: read_metadata.tsv
 
+# How many rounds of polishing that should be performed
+iterations: 2
+
 # Splitting
 splitting:
     # Size of chunks in bytes
-    chunk-size: 6500000
+    chunk-size: 100000000
 
 # Cluster configuration
 cluster:
