@@ -4,3 +4,4 @@ logs/
 results/
 .snakemake/
 read_metadata.tsv
+.vscode/
