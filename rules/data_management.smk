@@ -17,6 +17,7 @@ rule index_fasta:
     wildcard_constraints:
         extension=r'fa|fasta'
     conda: '../envs/samtools.yaml'
+    envmodules: 'bioinfo-tools', 'samtools/1.10'
     shell: 'samtools faidx {input}'
 
 def get_fasta_slices(wildcards):
@@ -55,6 +56,7 @@ rule merge_minimap_bams:
     output:
         bam='results/alignments/all_subread_alignments_{iteration}.bam'
     conda: '../envs/samtools.yaml'
+    envmodules: 'bioinfo-tools', 'samtools/1.10'
     threads: 20
     shell:
         """
@@ -74,6 +76,7 @@ rule bam_slice:
         run=r'\d+'
     threads: 1
     conda: '../envs/samtools.yaml'
+    envmodules: 'bioinfo-tools', 'samtools/1.10'
     shell:
         """
         slice_fasta=$(awk 'NR == {wildcards.slice} + 1' {input.fastafiles})

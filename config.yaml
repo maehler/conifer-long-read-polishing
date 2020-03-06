@@ -17,6 +17,7 @@ cluster:
     cookiecutter_url: https://github.com/Snakemake-Profiles/slurm
     profile_name: test_slurm
     use-conda: true
+    use-envmodules: true
     restart-times: 0
     jobs: 100
     latency-wait: 120

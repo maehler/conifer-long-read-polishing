@@ -25,11 +25,16 @@ cookiecutter -o $(dirname ${outdir}) --no-input ${cutdir}
 
 # The following parameters are required in the config
 use_conda=$(yq '.cluster | .["use-conda"]' config.yaml)
+use_envmodules=$(yq '.cluster | .["use-envmodules"]' config.yaml)
 restart_times=$(yq '.cluster | .["restart-times"]' config.yaml)
 max_jobs=$(yq '.cluster | .jobs' config.yaml)
 latency_wait=$(yq '.cluster | .["latency-wait"]' config.yaml)
 
-yq '.["restart-times"]='"${restart_times}"' | .jobs='"${max_jobs}"' | .["use-conda"]='"${use_conda}"' | .["latency-wait"]='"${latency_wait}" \
+yq '.["restart-times"]='"${restart_times}"' |
+        .jobs='"${max_jobs}"' |
+        .["use-conda"]='"${use_conda}"' |
+        .["use-envmodules"]='"${use_envmodules}"' |
+        .["latency-wait"]='"${latency_wait}" \
     ${outdir}/config.yaml > ${outdir}/config_mod.yaml
 mv ${outdir}/config_mod.yaml ${outdir}/config.yaml
 

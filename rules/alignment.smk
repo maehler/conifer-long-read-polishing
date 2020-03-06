@@ -37,6 +37,7 @@ rule minimap2_align:
         fasta=temp('results/alignments/subread_alignments_{iteration}/{bam_name}.fasta')
     threads: 10
     conda: '../envs/minimap2.yaml'
+    envmodules: 'bioinfo-tools', 'minimap2/2.16', 'samtools/1.10'
     shell:
         """
         samtools fasta {input.query_bam} > {output.fasta}
@@ -67,6 +68,7 @@ rule minimap2_index:
     output: 'reference/contigs_racon_{iteration}.mmi'
     threads: 20
     conda: '../envs/minimap2.yaml'
+    envmodules: 'bioinfo-tools', 'minimap2/2.16'
     shell:
         """
         minimap2 \\
