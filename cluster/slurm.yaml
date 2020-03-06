@@ -21,11 +21,11 @@ merge_minimap_bams:
     time: 1080
     ntasks: 20
 
-pbmm2_align:
+minimap2_align:
     time: 600
     ntasks: 10
 
-pbmm2_index:
+minimap2_index:
     partition: node
     time: 300
     ntasks: 20

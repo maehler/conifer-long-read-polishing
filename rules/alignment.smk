@@ -22,45 +22,59 @@ def get_full_bam_path(wildcards):
 
     return matches[0]
 
-rule pbmm2_align:
+rule minimap2_align:
     """
-    Align reads with pbmm2, i.e. the PacBio wrapper for minimap2.
+    Align subreads to the assembly with minimap2.
+
+    The default parameters here are based on the SUBREAD preset for pbmm2.
     """
     input:
-        reference='reference/contigs_racon_{iteration}_subread.mmi',
+        reference='reference/contigs_racon_{iteration}.mmi',
         query_bam=get_full_bam_path
-    output: 'results/alignments/subread_alignments_{iteration}/{bam_name}_alignments.bam'
+    output:
+        bam='results/alignments/subread_alignments_{iteration}/{bam_name}_alignments.bam',
+        tmpbam=temp('results/alignments/subread_alignments_{iteration}/{bam_name}_alignments.tmp.bam'),
+        fasta=temp('results/alignments/subread_alignments_{iteration}/{bam_name}.fasta')
     threads: 10
-    params:
-        preset='SUBREAD',
-    conda: '../envs/arrow.yaml'
+    conda: '../envs/minimap2.yaml'
     shell:
         """
-        pbmm2 align \\
-            --preset {params.preset} \\
-            --sort \\
-            -m 4G \\
-            -j {threads} \\
-            {input.reference} \\
-            {input.query_bam} \\
-            {output}
+        samtools fasta {input.query_bam} > {output.fasta}
+        minimap2 \\
+            -k 19 \\
+            -w 10 \\
+            -O 5,56 \\
+            -E 4,1 \\
+            -A 2 \\
+            -B 5 \\
+            -z 400,50 \\
+            -r 2000 \\
+            --lj-min-ratio 0.5 \\
+            -g 5000 \\
+            -a \\
+            --secondary=no \\
+            -t {threads} \\
+            {input.reference} {output.fasta} | \\
+            samtools view -hb -o {output.tmpbam}
+        samtools sort -m 4G -@ $(({threads} - 1)) -o {output.bam} {output.tmpbam}
         """
 
-rule pbmm2_index:
+rule minimap2_index:
     """
-    Create a minimap index for the assembly.
+    Create a minimap2 index for the assembly.
     """
     input: 'data/contigs_racon_{iteration}.fasta'
-    output: 'reference/contigs_racon_{iteration}_subread.mmi'
+    output: 'reference/contigs_racon_{iteration}.mmi'
     threads: 20
-    params:
-        preset='SUBREAD'
-    conda: '../envs/arrow.yaml'
+    conda: '../envs/minimap2.yaml'
     shell:
         """
-        pbmm2 index \\
-            --num-threads {threads} \\
-            --preset {params.preset} \\
-            {input} \\
-            {output}
+        minimap2 \\
+            -I 500G \\
+            -H \\
+            -k 19 \\
+            -w 10 \\
+            -t {threads} \\
+            -d {output} \\
+            {input}
         """
