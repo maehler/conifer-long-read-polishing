@@ -4,6 +4,5 @@ channels:
     - conda-forge
     - defaults
 dependencies:
-    - yq=2.7.1
-    - jq=1.6
     - cookiecutter=1.6.0
+    - pyyaml=5.3

@@ -8,6 +8,48 @@ properties:
     read_metadata:
         type: string
         description: path to tsv file with sequencing read metadata
+    iterations:
+        type: integer
+        description: the number of iterations of polishing to run
+        minimum: 1
+    splitting:
+        type: object
+        properties:
+            chunk-size:
+                type: integer
+                description: chunk size in bytes
+                minimum: 5000000
+    cluster:
+        type: object
+        properties:
+            cookiecutter:
+                type: object
+                properties:
+                    url:
+                        type: string
+                        format: uri
+                    profile_name:
+                        type: string
+                    cluster_config:
+                        type: string
+                        format: uri
+                    advanced_argument_conversion:
+                        type: boolean
+            snakemake:
+                properties:
+                    use-conda:
+                        type: boolean
+                    use-envmodules:
+                        type: boolean
+                    restart-times:
+                        type: integer
+                        minimum: 0
+                    jobs:
+                        type: integer
+                        minimum: 1
+                    latency-wait:
+                        type: integer
+                        minimum: 0
 
 required:
     - contig_fasta

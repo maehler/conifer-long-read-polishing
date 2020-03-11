@@ -1,14 +1,11 @@
 __default__:
+    account: 'slurm-account'
     time: 60
     partition: core
     ntasks: 1
-    job_name: "{rule}.{wildcards}"
+    job-name: "{rule}.{wildcards}"
     output: "logs/{rule}.{wildcards}.%j.out"
     error: "logs/{rule}.{wildcards}.%j.err"
-
-arrow:
-    time: 180
-    ntasks: 10
 
 bam_slice:
     time: 180
