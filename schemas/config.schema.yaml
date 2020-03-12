@@ -2,10 +2,10 @@ $schema: "http://json-schema.org/draft-07/schema#"
 description: config dictionary
 type: object
 properties:
-    contig_fasta:
+    contig-fasta:
         type: string
         description: path to FASTA file with assembled contigs
-    read_metadata:
+    read-metadata:
         type: string
         description: path to tsv file with sequencing read metadata
     iterations:
@@ -49,5 +49,7 @@ properties:
                         minimum: 0
 
 required:
-    - contig_fasta
-    - read_metadata
+    - contig-fasta
+    - read-metadata
+    - iterations
+    - slice-size

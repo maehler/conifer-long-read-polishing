@@ -1,26 +1,26 @@
-# Contig FASTA file
-contig_fasta: data/contigs.fa
+# FASTA file with contigs that should be polished.
+contig-fasta: data/contigs.fa
 
-# Read metadata
-read_metadata: read_metadata.tsv
+# Long read metadata.
+read-metadata: read_metadata.tsv
 
-# How many rounds of polishing that should be performed
+# How many rounds of polishing that should be performed.
 iterations: 2
 
 # Split the assembly into slices of approximately this
-# many bytes each and run the polishing on each of them
+# many bytes each and run the polishing on each of them.
 slice-size: 100000000
 
-# Cluster configuration
+# Cluster configuration.
 cluster:
-    # Cookiecutter parameters
+    # Cookiecutter parameters.
     cookiecutter:
         url: https://github.com/Snakemake-Profiles/slurm
-        profile_name: rackham_slurm
+        profile_name: longread_polish
         cluster_config: cluster/slurm.yaml
         advanced_argument_conversion: false
 
-    # Default Snakemake parameters
+    # Default Snakemake parameters.
     snakemake:
         use-conda: true
         use-envmodules: true

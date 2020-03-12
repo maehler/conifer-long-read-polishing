@@ -30,9 +30,9 @@ If you choose to fork the repository, the following steps are recommended:
 
 ## Configuration
 
-In [`config.yaml`](config.yaml) there are a couple of entries that need special attention: `contig_fasta`,`read_metadata` and `iterations`.
-`contig_fasta` should point to a FASTA file containing the contigs that should be polished with long reads.
-`read_metadata` should point to a TSV file containing information on where to find the short read data. It should contain the following columns:
+In [`config.yaml`](config.yaml) there are a couple of entries that need special attention: `contig-fasta`,`read-metadata` and `iterations`.
+`contig-fasta` should point to a FASTA file containing the contigs that should be polished with long reads.
+`read-metadata` should point to a TSV file containing information on where to find the long read data. It should contain the following columns:
 
 - `filename`: Path to the file containing the reads.
 - `filetype`: Supported types are `fasta`, `fastq` and `bam`.

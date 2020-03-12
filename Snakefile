@@ -9,7 +9,7 @@ min_version('5.10.0')
 configfile: 'config.yaml'
 validate(config, 'schemas/config.schema.yaml')
 
-read_metadata = pd.read_table(config['read_metadata']) \
+read_metadata = pd.read_table(config['read-metadata']) \
     .set_index('filename', drop=False)
 validate(read_metadata, 'schemas/read_metadata.schema.yaml')
 

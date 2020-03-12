@@ -2,7 +2,7 @@ rule symlink_assembly:
     """
     Symlink the assembly FASTA file to the project directory.
     """
-    input: Path(config['contig_fasta']).absolute()
+    input: Path(config['contig-fasta']).absolute()
     output: 'data/contigs_racon_0.fasta'
     priority: 50
     shell:
