@@ -12,13 +12,10 @@ properties:
         type: integer
         description: the number of iterations of polishing to run
         minimum: 1
-    splitting:
-        type: object
-        properties:
-            chunk-size:
-                type: integer
-                description: chunk size in bytes
-                minimum: 5000000
+    slice-size:
+        type: integer
+        description: slice size in bytes
+        minimum: 5000000
     cluster:
         type: object
         properties:
@@ -54,4 +51,3 @@ properties:
 required:
     - contig_fasta
     - read_metadata
-

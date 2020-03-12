@@ -43,7 +43,7 @@ checkpoint split_fasta:
     output:
         directory('data/contigs_racon_{iteration}_slices')
     params:
-        chunk_size=config['splitting']['chunk-size']
+        chunk_size=config['slice-size']
     conda: '../envs/racon.yaml'
     shell:
         """

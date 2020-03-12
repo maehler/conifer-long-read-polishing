@@ -7,10 +7,9 @@ read_metadata: read_metadata.tsv
 # How many rounds of polishing that should be performed
 iterations: 2
 
-# Splitting
-splitting:
-    # Size of chunks in bytes
-    chunk-size: 100000000
+# Split the assembly into slices of approximately this
+# many bytes each and run the polishing on each of them
+slice-size: 100000000
 
 # Cluster configuration
 cluster:
